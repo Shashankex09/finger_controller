@@ -6,9 +6,10 @@ A computer vision project that enables device control through hand gestures and 
 
 - **Hand Gesture Recognition**: Real-time hand tracking using MediaPipe
 - **Finger Command Detection**: Control devices based on finger positions
-- **Face Detection**: Integrated facial recognition capabilities
+- **Face Tracking**: Automatic servo control to follow your face in real-time
 - **ESP32 Integration**: Wireless communication with IoT devices
 - **Real-time Video Processing**: Live camera feed analysis
+- **Optimized Performance**: Balanced latency and accuracy with smart detection
 
 ## 📋 Requirements
 
@@ -36,9 +37,9 @@ A computer vision project that enables device control through hand gestures and 
 python src/commands_by_fingers.py
 ```
 
-### Face Detection
+### Face Tracking with Servo Control
 ```bash
-python src/face_detection.py
+python src/face_tracking.py
 ```
 
 ## 📁 Project Structure
@@ -139,3 +140,30 @@ ESP32/ESP8266          Servo
 - **Change servo pin**: Modify `SERVO_PIN` in the ESP code
 - **Adjust servo range**: Change `SERVO_MIN` and `SERVO_MAX`
 - **Change baud rate**: Update `BAUD_RATE` in both Python and ESP code
+
+### Performance Tuning (Face Tracking)
+
+The `face_tracking.py` script uses intelligent frame skipping and resolution downscaling for optimal performance:
+
+```python
+DETECT_EVERY_N_FRAMES = 2        # Run detection every 2 frames (adjust for latency vs accuracy)
+DETECTION_SCALE = 0.75           # Detection at 75% resolution (adjust between 0.4-1.0)
+```
+
+- **Lower `DETECT_EVERY_N_FRAMES`**: More accurate but slower (1 = every frame)
+- **Higher `DETECT_EVERY_N_FRAMES`**: Faster but less accurate (5 = every 5 frames)
+- **Lower `DETECTION_SCALE`**: Faster detection but lower accuracy (0.4 = 40% resolution)
+- **Higher `DETECTION_SCALE`**: Slower but more accurate (1.0 = full resolution)
+
+PID tuning for servo smoothness:
+```python
+KP, KI, KD = 0.015, 0.00005, 0.008  # Proportional, Integral, Derivative gains
+```
+
+### Real-Time Performance Display
+
+When running `face_tracking.py`, the window shows:
+- **FPS**: Frames per second (target: 25-30 FPS)
+- **Latency**: Average frame processing time in milliseconds
+- **Angle**: Current servo angle
+- **Error**: Face deviation from center in pixels
