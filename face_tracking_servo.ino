@@ -1,7 +1,7 @@
-#include <Servo.h>
+#include <ESP32Servo.h>
 
 // Pin definitions
-const int SERVO_PIN = 13;  // Change this to your servo pin
+const int SERVO_PIN = 13;  // Change this to your servo pin (PWM capable)
 
 // Servo object
 Servo myServo;
@@ -12,23 +12,34 @@ const int BAUD_RATE = 115200;
 // Servo limits (must match Python script)
 const int SERVO_MIN = 20;
 const int SERVO_MAX = 160;
+const int SERVO_REST = 90;
 
 // Current servo position
 int currentAngle = 90;
+int lastAngle = 90;
+unsigned long lastMoveTime = 0;
+const unsigned long MIN_MOVE_DELAY = 20;  // Minimum 20ms between moves
 
 void setup() {
   // Initialize serial communication
   Serial.begin(BAUD_RATE);
   delay(2000);  // Wait for serial to initialize
 
-  // Attach servo to pin
-  myServo.attach(SERVO_PIN);
+  // Configure servo with proper PWM settings for ESP32
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  
+  myServo.setPeriodHertz(50);  // Standard servo frequency
+  myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
 
   // Set initial position
   myServo.write(currentAngle);
 
-  Serial.println("ESP Servo Controller Ready");
-  Serial.println("Waiting for commands...");
+  Serial.println("ESP32 Servo Controller Ready");
+  Serial.println("Format: A###");
+  Serial.println("Example: A090");
 }
 
 void loop() {
@@ -50,14 +61,37 @@ void loop() {
 
       // Validate angle range
       if (newAngle >= SERVO_MIN && newAngle <= SERVO_MAX) {
-        // Move servo to new position
-        myServo.write(newAngle);
-        currentAngle = newAngle;
+        unsigned long now = millis();
+        
+        // Check if minimum delay has passed
+        if (now - lastMoveTime >= MIN_MOVE_DELAY) {
+          // Only move if angle is different
+          if (newAngle != currentAngle) {
+            myServo.write(newAngle);
+            currentAngle = newAngle;
+            lastMoveTime = now;
+            
+            // Send confirmation back to Python
+            Serial.print("OK:");
+            Serial.println(newAngle);
+          }
+        }
+      } else {
+        // Invalid angle
+        Serial.print("ERR:Range ");
+        Serial.print(SERVO_MIN);
+        Serial.print("-");
+        Serial.println(SERVO_MAX);
+      }
+    } else if (command.length() > 0) {
+      // Unknown command
+      Serial.println("ERR:Format");
+    }
+  }
 
-        // Send confirmation back to Python
-        Serial.print("OK: Servo moved to ");
-        Serial.print(newAngle);
-        Serial.println(" degrees");
+  // Small delay to prevent overwhelming the serial buffer
+  delayMicroseconds(100);
+}
       } else {
         // Invalid angle
         Serial.print("ERROR: Invalid angle ");
